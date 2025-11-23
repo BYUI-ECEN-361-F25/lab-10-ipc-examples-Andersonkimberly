@@ -97,7 +97,7 @@ osThreadId_t ResetGlobalHandle;
 const osThreadAttr_t ResetGlobal_attributes = {
   .name = "ResetGlobal",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityIdle,
 };
 /* Definitions for DebounceTask */
 osThreadId_t DebounceTaskHandle;
@@ -106,10 +106,36 @@ const osThreadAttr_t DebounceTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for SemaphoreToggle */
+osThreadId_t SemaphoreToggleHandle;
+const osThreadAttr_t SemaphoreToggle_attributes = {
+  .name = "SemaphoreToggle",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for SemToggle_D3 */
+osThreadId_t SemToggle_D3Handle;
+const osThreadAttr_t SemToggle_D3_attributes = {
+  .name = "SemToggle_D3",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+/* Definitions for Mutex_Dash */
+osThreadId_t Mutex_DashHandle;
+const osThreadAttr_t Mutex_Dash_attributes = {
+  .name = "Mutex_Dash",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* Definitions for SW_Timer_7Seg */
 osTimerId_t SW_Timer_7SegHandle;
 const osTimerAttr_t SW_Timer_7Seg_attributes = {
   .name = "SW_Timer_7Seg"
+};
+/* Definitions for RefreshTimer */
+osTimerId_t RefreshTimerHandle;
+const osTimerAttr_t RefreshTimer_attributes = {
+  .name = "RefreshTimer"
 };
 /* Definitions for UpDownMutex */
 osMutexId_t UpDownMutexHandle;
@@ -165,7 +191,11 @@ void Mutex_CountDownTask(void *argument);
 void UpdateGlobDisplayProcess(void *argument);
 void ResetGlobalTask(void *argument);
 void StartDebounce(void *argument);
+void Semaphore_Toggle_Task(void *argument);
+void Semaphore_ToggleD3_Task(void *argument);
+void Mutex_DashTask(void *argument);
 void SW_Timer_Countdown(void *argument);
+void RefreshCallback(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -211,7 +241,7 @@ int main(void)
   printf("\033\143"); printf("Welcome to ECEN-361 Lab-10 \n\r");
 	// Start timer
 	MultiFunctionShield_Clear();							// Clear the 7-seg display
-	HAL_TIM_Base_Start_IT(&htim17);							// LED SevenSeg cycle thru them
+//	HAL_TIM_Base_Start_IT(&htim17);							// LED SevenSeg cycle thru them
 	Clear_LEDs();
 
 
@@ -229,7 +259,7 @@ int main(void)
 
   /* Create the semaphores(s) */
   /* creation of Button_1_Semaphore */
-  Button_1_SemaphoreHandle = osSemaphoreNew(1, 0, &Button_1_Semaphore_attributes);
+  Button_1_SemaphoreHandle = osSemaphoreNew(10, 0, &Button_1_Semaphore_attributes);
 
   /* creation of Button_2_Semaphore */
   Button_2_SemaphoreHandle = osSemaphoreNew(1, 0, &Button_2_Semaphore_attributes);
@@ -248,8 +278,12 @@ int main(void)
   /* creation of SW_Timer_7Seg */
   SW_Timer_7SegHandle = osTimerNew(SW_Timer_Countdown, osTimerPeriodic, NULL, &SW_Timer_7Seg_attributes);
 
+  /* creation of RefreshTimer */
+  RefreshTimerHandle = osTimerNew(RefreshCallback, osTimerPeriodic, NULL, &RefreshTimer_attributes);
+
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
+  osTimerStart(RefreshTimerHandle, 5);
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -280,6 +314,15 @@ int main(void)
 
   /* creation of DebounceTask */
   DebounceTaskHandle = osThreadNew(StartDebounce, NULL, &DebounceTask_attributes);
+
+  /* creation of SemaphoreToggle */
+  SemaphoreToggleHandle = osThreadNew(Semaphore_Toggle_Task, NULL, &SemaphoreToggle_attributes);
+
+  /* creation of SemToggle_D3 */
+  SemToggle_D3Handle = osThreadNew(Semaphore_ToggleD3_Task, NULL, &SemToggle_D3_attributes);
+
+  /* creation of Mutex_Dash */
+  Mutex_DashHandle = osThreadNew(Mutex_DashTask, NULL, &Mutex_Dash_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -637,7 +680,7 @@ void SW_Timer_Task(void *argument)
 	if (osTimerIsRunning(SW_Timer_7SegHandle))
 		osTimerStop(SW_Timer_7SegHandle );
 	else
-		osTimerStart(SW_Timer_7SegHandle , 200);
+		osTimerStart(SW_Timer_7SegHandle , 600);
     osDelay(1);
   }
   /* USER CODE END SW_Timer_Task */
@@ -779,6 +822,93 @@ void StartDebounce(void *argument)
   /* USER CODE END StartDebounce */
 }
 
+/* USER CODE BEGIN Header_Semaphore_Toggle_Task */
+/**
+* @brief Function implementing the SemaphoreToggle thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Semaphore_Toggle_Task */
+void Semaphore_Toggle_Task(void *argument)
+{
+  /* USER CODE BEGIN Semaphore_Toggle_Task */
+  /* Infinite loop */
+	for(;;)
+	{
+	  uint8_t presses = 0;
+	  while (osSemaphoreAcquire(Button_1_SemaphoreHandle, 0) == osOK)
+	  {
+		presses++;
+	  }
+	  if (presses > 0)
+	  {
+		for (uint8_t i = 0; i < presses; i++)
+		{
+		  HAL_GPIO_TogglePin(LED_D4_GPIO_Port, LED_D4_Pin);
+		  osDelay(1000);
+		}
+	  }
+	  osDelay(1000);
+	}
+  /* USER CODE END Semaphore_Toggle_Task */
+}
+
+/* USER CODE BEGIN Header_Semaphore_ToggleD3_Task */
+/**
+* @brief Function implementing the SemToggle_D3 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Semaphore_ToggleD3_Task */
+void Semaphore_ToggleD3_Task(void *argument)
+{
+  /* USER CODE BEGIN Semaphore_ToggleD3_Task */
+  /* Infinite loop */
+	for(;;)
+	{
+	  uint8_t presses = 0;
+	  while (osSemaphoreAcquire(Button_1_SemaphoreHandle, 0) == osOK)
+	  {
+		presses++;
+	  }
+	  if (presses > 0)
+	  {
+		for (uint8_t i = 0; i < presses; i++)
+		{
+		  HAL_GPIO_TogglePin(LED_D3_GPIO_Port, LED_D3_Pin);
+		  osDelay(1000);
+		}
+	  }
+	  osDelay(1000);
+	}
+  /* USER CODE END Semaphore_ToggleD3_Task */
+}
+
+/* USER CODE BEGIN Header_Mutex_DashTask */
+/**
+* @brief Function implementing the Mutex_Dash thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Mutex_DashTask */
+void Mutex_DashTask(void *argument)
+{
+  /* USER CODE BEGIN Mutex_DashTask */
+  /* Infinite loop */
+	 for(;;)
+		{
+		/* This doesn't change the value, it just clears the display  */
+		/* If asked to display a negative number, the function displays a "--"
+		*/
+		osMutexWait(UpDownMutexHandle,osWaitForever);
+		MultiFunctionShield_Display_Two_Digits(-1);
+		osDelay(200);
+		osMutexRelease(UpDownMutexHandle);
+		osDelay(2);
+		}
+  /* USER CODE END Mutex_DashTask */
+}
+
 /* SW_Timer_Countdown function */
 void SW_Timer_Countdown(void *argument)
 {
@@ -796,6 +926,14 @@ void SW_Timer_Countdown(void *argument)
 	// MultiFunctionShield_Single_Digit_Display(2, -1);//blank the bottom two
 
   /* USER CODE END SW_Timer_Countdown */
+}
+
+/* RefreshCallback function */
+void RefreshCallback(void *argument)
+{
+  /* USER CODE BEGIN RefreshCallback */
+	  MultiFunctionShield__ISRFunc();
+  /* USER CODE END RefreshCallback */
 }
 
 /**
@@ -817,7 +955,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 1 */
   if (htim == &htim17 )
   {
-	  MultiFunctionShield__ISRFunc();
+//	  MultiFunctionShield__ISRFunc();
   }
 
   /* USER CODE END Callback 1 */

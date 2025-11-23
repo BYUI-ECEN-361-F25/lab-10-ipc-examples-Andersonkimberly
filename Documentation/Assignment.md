@@ -1,5 +1,5 @@
 # ECEN-361 Lab-10: IPC-Examples
-     Student Name:  ___________________________________
+     Student Name:  __Kimberly Anderson_________________________________
 
 ## Introduction and Objectives of the Lab
 
@@ -80,12 +80,12 @@ Now make sure to write the code inside of the Semaphore_Toggle_Task function tha
 
 <br>
 1. How did your task ‘wait’ for the debounced button? <br>
-<mark>_______________________________________________________ </mark>
+<mark>The task waited because osSemaphoreAcquire() has a timeout parameter that we set to osWaitForever, which then caused it to wait until osSemaphoreRelease() was called in the StartDebounce() function. </mark>
 <br>
 <br><br>
 
 2.)	How long is the time between the button interrupt coming in and it being enabled again? <br>
-<mark>_______________________________________________________ </mark>
+<mark>30ms found in the StartDebounce() function. </mark>
 ><br>
 > <br>
 
@@ -96,11 +96,11 @@ Now create a second task (semaphore_Toggle_D3) -- <p>
 
 
 3.)	Do both of (D4 and D3) toggle with a single button press?  Describe the behavior?  <br>
-<mark>_________________________________________________________________________________<br><br>
+<mark>No, with each button press one event would occur.  D3 turned on but not D4, then D3 would stay on and D4 would turn on.  Then D3 would turn off and D4 would stay on, finally D3 would remain off and D4 would turn off.  Then the cycle would repeat.<br><br>
 
 4.)	Now change one of the priorities of these two tasks, re-compile,  and re-run.
 How has the behavior changed?
-<mark>_________________________________________________________________________________<br><br>
+<mark>Now, only the LED with the higher priority would turn on and off.  The other LED would not turn on.<br><br>
 
 
 ## Part 2: Mutexes
@@ -152,12 +152,12 @@ current count. The first two processes are done for you "Mutex_CountDownTask" an
 >
 ><br>
 >7.)	Comment on the Up/Down/ ”—” display that you see.  <br><br>
-><mark>___________________________________________________________________________________________________________<br><br><p>
+><mark>It is changing between different numbers and dashes. It appears they are trying to compete for the space.<br><br><p>
 
 
 >8.)	Is there a ‘priority’ associated with the Mutex?  If so, how can it be changed?
 ><br>  
-><mark>___________________________________________________________________________________________________________<br><br>
+><mark>Yes, but it is not the priority setting in the Task settings of FREERTOS.  The documentations mentions priority inheritance flag in osMutexAttr_t and osMutexPrioInherit, which if disabled, it can allow lower priority threads to grab the Mutex and never return the Mutex to other or higher priorities.  osMutexPrioInherit is enabled by default.<br><br>
 <p>
 
 ><br>
@@ -165,7 +165,7 @@ current count. The first two processes are done for you "Mutex_CountDownTask" an
 
 >  Change the priority of the Reset to be osPriorityIdle.  This is the lowest priority available. Note that you will not find this priority type listed in the .ioc configuration, as it is intended to be used for idle threads. This priority must be manually set in the code.<br>
 ><br> Did you see any effect on the ability of Button_3 to reset the count?<br><br>
-><mark>___________________________________________________________________________________________________________<br><br>
+><mark>I'm not seeing what I think is intended to be seen.  When I press button 3 it still immediately resets the value.  I think this is because after the count up and count down mutex tasks happen, they do 200ms and 300ms osDelay() before they can be called again, leaving large windows.  The dash mutex does hold it for 200ms, but to press it during that is difficult, yet it still doesn't show any noticable delay as the osPriorityIdle just puts the GlobalReset button 3 at the end of the queue, and the reset happens within ~200ms at the longest wait.<br><br>
 >
 ---
 <!--------------------------------------------------------------------------------->
@@ -196,12 +196,12 @@ display digit.
 >
 >10.) This timer was created via the GUI  (.IOC file).  It’s type is *“osTimerPeriodic”* which means it repeats over and over.<br><br>
 What other options can a Software Timer take to change its Type and operation? <br>
-><mark>___________________________________________________________________________________________________________<br><br>
+><mark>In the GUI we can change the type to be osTimerOnce.  This would allow the timer to only run one time and expire.  Currently it is set to osTimerPeriodic which makes it repeat itself indefinitely.  Within the code we can Start, Stop, ChangePeriod, Delete, IsRunning to manipulate the timer at any point during its operation.<br><br>
 
 >11).	The debounce for the switches here used an osDelay() call (non-blocking).  Is there any advantage to using a SWTimer here instead?<br>
 > Explain why or why not?
 >
-><mark>___________________________________________________________________________________________________________<br><br>
+><mark>osDelay() is more practical when you want a delay that is consistent and known.  Using a SWTimer can allow for more control of the timer, when its called, its length, enable, disable, etc...  Otherwise osDelay() is more efficient.<br><br>
 
 
 <!--------------------------------------------------------------------------------->
@@ -211,12 +211,12 @@ What other options can a Software Timer take to change its Type and operation? <
 >1.	The Seven-Seg Display is currently refreshed with a hardware (TIM17) timer.  Make this more thread-safe by changing the refresh as a process that is based off a S/W timer.
 >
 >Write about how you did it, and what the slowest period could be to keep the persistence looking good:
-><mark>___________________________________________________________________________________________________________<br><br>
+><mark>Using the GUI I created a new timer called "RefreshTimer" which then generated most of the code I needed.  I copied and commented out the MultiFunctionShield__ISRFunc(); in the HAL_TIM_PeriodElapsedCallback(), and pasted it into my new RefreshCallback().  I did osTimerStart() after the creation of the timer with a refresh of 20, which was terrible.  I also tried 15 and 10 and they were just as bad.  5 seemed to be the sweet spot for the period setting.<br><br>
 
 >2.	We only used a binary semaphore in this lab for the switch presses.  Change it so that presses are accumulated through a counting semaphore and then handled as they are taken off.<br><br>
 >Describe any issues with this approach
 >
-><mark>___________________________________________________________________________________________________________<br><br>
+><mark>I changed button 1 to allow for 10 tokens.  At first it didn't matter as the LED would blink as quickly as I could press it, making it seem as though there wasn't a difference.  So I created a 1 second delay allowing me to build up the "queue" of tokens to turn the LED's on and off.<br><br>
 >
 
 >
@@ -225,7 +225,7 @@ What other options can a Software Timer take to change its Type and operation? <
 >
 >3.	Any other relevant uses for semaphores, mutexes, or S/W timers ?   Describe what you’ve done and why?
 >
-><mark>___________________________________________________________________________________________________________<br><br>
+><mark>A heartbeat monitor could be useful.  This way you could monitor tasks for stalls or freezes.  The monitor could use a timer to check periodically that tasks were running as expected, and if not could cause an LED to blink, or some other method to draw attention. I did not write any code for this.<br><br>
 >
 ><br>
 
